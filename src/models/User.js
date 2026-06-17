@@ -84,23 +84,16 @@ const userSchema = new mongoose.Schema(
 // ─────────────────────────────────────────────────────────
 // যখনই user save হবে (register বা password update) তখন চলবে
 // password পরিবর্তন না হলে (শুধু name update) এই hook skip করবে
-userSchema.pre("save", async function (next) {
-  // "this" মানে যে document save হচ্ছে সেটা
-  if (!this.isModified("password")) {
-    return next(); // password change না হলে skip করো
-  }
+// Mongoose 9: async hook এ next() call করতে হয় না — শুধু return করলেই হয়
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
 
   const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12;
-  // saltRounds যত বেশি → তত secure কিন্তু তত ধীর
-  // 12 হলো industry standard (login এ ~300ms লাগে — acceptable)
   this.password = await bcrypt.hash(this.password, saltRounds);
 
-  // password change হলে এই field set করো
   if (!this.isNew) {
     this.passwordChangedAt = Date.now();
   }
-
-  next();
 });
 
 // ─────────────────────────────────────────────────────────
